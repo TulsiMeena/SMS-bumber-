@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Outer Glow Circle in 66dp safe zone (center at 54,54 radius 30) -->
+    <path
+        android:pathData="M54,24 A30,30 0 1,1 53.9,24 Z"
+        android:strokeWidth="2"
+        android:strokeColor="#38BDF8">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="24"
+                android:startY="24"
+                android:endX="84"
+                android:endY="84"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#2638BDF8" />
+                <item android:offset="1.0" android:color="#26F97316" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Message Bubble Body -->
+    <path
+        android:pathData="M34,36 C34,32 37,29 41,29 L67,29 C71,29 74,32 74,36 L74,58 C74,62 71,65 67,65 L48,65 L37,73 L39,65 C36,65 34,62 34,58 Z"
+        android:fillColor="#0284C7" />
+
+    <!-- Lightning / Blast Rocket bolt across center -->
+    <path
+        android:pathData="M56,33 L42,50 L52,50 L46,67 L66,47 L54,47 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="42"
+                android:startY="33"
+                android:endX="66"
+                android:endY="67"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FACC15" />
+                <item android:offset="1.0" android:color="#EA580C" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Speed Sparks -->
+    <path
+        android:pathData="M70,40 L76,40 M72,46 L80,46 M69,52 L75,52"
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+</vector>
