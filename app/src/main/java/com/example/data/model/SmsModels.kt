@@ -11,6 +11,21 @@ enum class SmsDeliveryStatus {
     SIMULATED
 }
 
+enum class DispatchMode {
+    CLOUD_ANONYMOUS, // Uses Cloud Gateway APIs (Fast2SMS, Twilio, Msg91, Textlocal, Webhook) - Personal SIM number is 100% hidden
+    REAL_SIM,        // Hardware SIM card
+    SANDBOX          // Offline virtual simulator
+}
+
+enum class GatewayProvider(val displayName: String, val defaultEndpoint: String, val supportsMaskedSender: Boolean) {
+    FAST2SMS("Fast2SMS (Quick OTP/Direct)", "https://www.fast2sms.com/dev/bulkV2", true),
+    TWILIO("Twilio Cloud SMS", "https://api.twilio.com/2010-04-01/Accounts", true),
+    MSG91("MSG91 Alpha SMS", "https://control.msg91.com/api/v5/flow", true),
+    TEXTLOCAL("Textlocal Gateway", "https://api.textlocal.in/send", true),
+    CUSTOM_WEBHOOK("Custom REST Webhook", "", true),
+    DEFAULT_RELAY("Built-in Instant Relay", "", true)
+}
+
 @Entity(tableName = "sms_logs")
 data class SmsLog(
     @PrimaryKey(autoGenerate = true)
@@ -23,7 +38,10 @@ data class SmsLog(
     val timestamp: Long = System.currentTimeMillis(),
     val status: SmsDeliveryStatus,
     val errorMessage: String? = null,
-    val isSimulation: Boolean = false,
+    val dispatchMode: String = DispatchMode.CLOUD_ANONYMOUS.name,
+    val senderId: String = "TX-ALERTS",
+    val gatewayProvider: String = GatewayProvider.FAST2SMS.name,
+    val isNumberMasked: Boolean = true,
     val simSlot: Int = 0,
     val latencyMs: Long = 0
 )
@@ -35,8 +53,8 @@ data class SmsTemplate(
     val title: String,
     val category: String,
     val templateBody: String,
-    val defaultCount: Int = 5,
-    val defaultDelaySeconds: Float = 1.5f,
+    val defaultCount: Int = 10,
+    val defaultDelaySeconds: Float = 0.1f,
     val isFavorite: Boolean = false,
     val isSystemDefault: Boolean = false,
     val usageCount: Int = 0
@@ -47,14 +65,28 @@ data class ContactItem(
     val phoneNumber: String
 )
 
+data class CloudGatewayConfig(
+    val selectedProvider: GatewayProvider = GatewayProvider.FAST2SMS,
+    val senderId: String = "TX-ALERTS",
+    val apiKey: String = "",
+    val twilioAccountSid: String = "",
+    val twilioAuthToken: String = "",
+    val twilioFromNumber: String = "",
+    val customApiUrl: String = "",
+    val maskSenderNumber: Boolean = true
+)
+
 data class BlastConfig(
     val targetNumber: String = "",
-    val messageTemplate: String = "Test packet #{index} from SMS Blast Pro [Code: {code}] at {time}",
+    val messageTemplate: String = "Passcode #{index}: {code} for your security login at {time}",
     val count: Int = 5,
-    val delaySeconds: Float = 1.0f,
-    val isSimulationMode: Boolean = true,
+    val delaySeconds: Float = 0.1f,
+    val dispatchMode: DispatchMode = DispatchMode.CLOUD_ANONYMOUS,
+    val senderId: String = "TX-ALERTS",
     val selectedSimSlot: Int = 0,
-    val autoIncrementCode: Boolean = true
+    val autoIncrementCode: Boolean = true,
+    val isTurboBurstEnabled: Boolean = true,
+    val gatewayConfig: CloudGatewayConfig = CloudGatewayConfig()
 )
 
 enum class EngineState {

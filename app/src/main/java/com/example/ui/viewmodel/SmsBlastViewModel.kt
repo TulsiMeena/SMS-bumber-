@@ -9,8 +9,11 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.data.db.AppDatabase
 import com.example.data.model.BlastConfig
+import com.example.data.model.CloudGatewayConfig
 import com.example.data.model.ContactItem
+import com.example.data.model.DispatchMode
 import com.example.data.model.EngineState
+import com.example.data.model.GatewayProvider
 import com.example.data.model.SmsDeliveryStatus
 import com.example.data.model.SmsLog
 import com.example.data.model.SmsTemplate
@@ -33,7 +36,19 @@ class SmsBlastViewModel(
     private val smsEngine: SmsEngine
 ) : AndroidViewModel(application) {
 
-    private val _config = MutableStateFlow(BlastConfig(targetNumber = "+12025550199"))
+    private val _config = MutableStateFlow(
+        BlastConfig(
+            targetNumber = "+12025550199",
+            count = 5,
+            delaySeconds = 0.1f,
+            dispatchMode = DispatchMode.CLOUD_ANONYMOUS,
+            senderId = "TX-ALERTS",
+            gatewayConfig = CloudGatewayConfig(
+                selectedProvider = GatewayProvider.FAST2SMS,
+                senderId = "TX-ALERTS"
+            )
+        )
+    )
     val config: StateFlow<BlastConfig> = _config.asStateFlow()
 
     private val _selectedHistoryFilter = MutableStateFlow<SmsDeliveryStatus?>(null)
@@ -83,15 +98,81 @@ class SmsBlastViewModel(
     }
 
     fun updateDelay(delaySeconds: Float) {
-        _config.update { it.copy(delaySeconds = (Math.round(delaySeconds * 10) / 10f).coerceIn(0.2f, 10.0f)) }
+        val rounded = (Math.round(delaySeconds * 100) / 100f).coerceIn(0.05f, 5.0f)
+        _config.update { it.copy(delaySeconds = rounded) }
     }
 
-    fun toggleSimulationMode(isSim: Boolean) {
-        _config.update { it.copy(isSimulationMode = isSim) }
+    fun setSpeedPreset(delaySeconds: Float) {
+        _config.update { it.copy(delaySeconds = delaySeconds) }
     }
 
-    fun selectSimSlot(slot: Int) {
-        _config.update { it.copy(selectedSimSlot = slot) }
+    fun setDispatchMode(mode: DispatchMode) {
+        _config.update { it.copy(dispatchMode = mode) }
+    }
+
+    fun setGatewayProvider(provider: GatewayProvider) {
+        _config.update {
+            it.copy(
+                gatewayConfig = it.gatewayConfig.copy(selectedProvider = provider)
+            )
+        }
+    }
+
+    fun setSenderId(senderId: String) {
+        val sanitized = senderId.take(11).uppercase()
+        _config.update {
+            it.copy(
+                senderId = sanitized,
+                gatewayConfig = it.gatewayConfig.copy(senderId = sanitized)
+            )
+        }
+    }
+
+    fun updateFast2SmsApiKey(apiKey: String) {
+        _config.update {
+            it.copy(
+                gatewayConfig = it.gatewayConfig.copy(
+                    apiKey = apiKey,
+                    selectedProvider = GatewayProvider.FAST2SMS
+                )
+            )
+        }
+    }
+
+    fun updateTwilioConfig(accountSid: String, authToken: String, fromNumber: String) {
+        _config.update {
+            it.copy(
+                gatewayConfig = it.gatewayConfig.copy(
+                    twilioAccountSid = accountSid,
+                    twilioAuthToken = authToken,
+                    twilioFromNumber = fromNumber,
+                    selectedProvider = GatewayProvider.TWILIO
+                )
+            )
+        }
+    }
+
+    fun updateMsg91Config(apiKey: String) {
+        _config.update {
+            it.copy(
+                gatewayConfig = it.gatewayConfig.copy(
+                    apiKey = apiKey,
+                    selectedProvider = GatewayProvider.MSG91
+                )
+            )
+        }
+    }
+
+    fun updateCustomWebhook(url: String, apiKey: String) {
+        _config.update {
+            it.copy(
+                gatewayConfig = it.gatewayConfig.copy(
+                    customApiUrl = url,
+                    apiKey = apiKey,
+                    selectedProvider = GatewayProvider.CUSTOM_WEBHOOK
+                )
+            )
+        }
     }
 
     fun insertTag(tag: String) {
@@ -184,10 +265,17 @@ class SmsBlastViewModel(
     }
 
     fun resendLog(log: SmsLog) {
+        val mode = try {
+            DispatchMode.valueOf(log.dispatchMode)
+        } catch (e: Exception) {
+            DispatchMode.CLOUD_ANONYMOUS
+        }
         _config.update {
             it.copy(
                 targetNumber = log.phoneNumber,
                 messageTemplate = log.messageText,
+                senderId = log.senderId,
+                dispatchMode = mode,
                 count = 1
             )
         }
@@ -219,16 +307,16 @@ class SmsBlastViewModel(
                     }
                 }
             } catch (e: Exception) {
-                // Fallback default quick targets if contacts permission is not granted yet
+                // Fallback presets
             }
 
             if (contactList.isEmpty()) {
                 contactList.addAll(
                     listOf(
-                        ContactItem("Self / Test Sim", "+12025550199"),
-                        ContactItem("Echo Test Line", "+14155552671"),
-                        ContactItem("Emergency Broadcast", "+18005550100"),
-                        ContactItem("Dev Lab Server", "+16505550144")
+                        ContactItem("Target Contact 1", "+12025550199"),
+                        ContactItem("Target Contact 2", "+14155552671"),
+                        ContactItem("Support Line", "+18005550100"),
+                        ContactItem("Office Line", "+16505550144")
                     )
                 )
             }

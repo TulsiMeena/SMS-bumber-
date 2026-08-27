@@ -13,12 +13,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.material.icons.filled.History
@@ -46,9 +43,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -63,11 +57,8 @@ import com.example.ui.theme.CyberCyan
 import com.example.ui.theme.DarkBg
 import com.example.ui.theme.DarkSurface
 import com.example.ui.theme.DarkSurfaceBorder
-import com.example.ui.theme.DarkSurfaceElevated
 import com.example.ui.theme.ElectricCyan
 import com.example.ui.theme.MyApplicationTheme
-import com.example.ui.theme.NeonOrange
-import com.example.ui.theme.TextPrimaryDark
 import com.example.ui.theme.TextSecondaryDark
 import com.example.ui.viewmodel.SmsBlastViewModel
 
@@ -80,7 +71,7 @@ enum class NavigationTab(
     BLASTER("Blaster", Icons.Filled.ElectricBolt, Icons.Outlined.ElectricBolt, "tab_blaster"),
     TEMPLATES("Templates", Icons.Filled.ListAlt, Icons.Outlined.ListAlt, "tab_templates"),
     HISTORY("History", Icons.Filled.History, Icons.Outlined.History, "tab_history"),
-    CARRIER("Carrier", Icons.Filled.SettingsCell, Icons.Outlined.SettingsCell, "tab_carrier")
+    CARRIER("Gateway", Icons.Filled.SettingsCell, Icons.Outlined.SettingsCell, "tab_carrier")
 }
 
 class MainActivity : ComponentActivity() {
@@ -128,9 +119,6 @@ fun MainAppScreen(viewModel: SmsBlastViewModel) {
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         hasSmsPermission = isGranted
-        if (isGranted) {
-            viewModel.toggleSimulationMode(false)
-        }
     }
 
     val contactsPermissionLauncher = rememberLauncherForActivityResult(
@@ -232,6 +220,7 @@ fun MainAppScreen(viewModel: SmsBlastViewModel) {
                     }
                 )
                 NavigationTab.CARRIER -> CarrierScreen(
+                    viewModel = viewModel,
                     hasSmsPermission = hasSmsPermission,
                     hasContactsPermission = hasContactsPermission,
                     onRequestSmsPermission = {

@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,12 +23,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Science
-import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -55,9 +58,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.model.DispatchMode
 import com.example.data.model.SmsDeliveryStatus
 import com.example.data.model.SmsLog
-import com.example.ui.theme.BrightAmber
 import com.example.ui.theme.CyberCyan
 import com.example.ui.theme.DarkBg
 import com.example.ui.theme.DarkSurface
@@ -69,6 +72,7 @@ import com.example.ui.theme.TerminalGreen
 import com.example.ui.theme.TerminalRed
 import com.example.ui.theme.TextPrimaryDark
 import com.example.ui.theme.TextSecondaryDark
+import com.example.ui.theme.WarningYellow
 import com.example.ui.viewmodel.SmsBlastViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -85,8 +89,8 @@ fun HistoryScreen(
     val successCount by viewModel.successfulLogsCount.collectAsStateWithLifecycle()
     val selectedFilter by viewModel.selectedHistoryFilter.collectAsStateWithLifecycle()
 
-    var showClearDialog by remember { mutableStateOf(false) }
-    var inspectLog by remember { mutableStateOf<SmsLog?>(null) }
+    var selectedLogForDetail by remember { mutableStateOf<SmsLog?>(null) }
+    var showClearConfirm by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = modifier
@@ -96,7 +100,7 @@ fun HistoryScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(top = 12.dp, bottom = 32.dp)
     ) {
-        // Overview Summary Header
+        // TOP TELEMETRY SUMMARY
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -112,96 +116,129 @@ fun HistoryScreen(
                 ) {
                     Column {
                         Text(
-                            text = "DISPATCH AUDIT LOGS",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            text = "DISPATCH TELEMETRY",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            ),
                             color = ElectricCyan
                         )
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "$totalCount Total Recorded",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            text = "$totalCount Total Packets",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
                             color = TextPrimaryDark
                         )
                     }
 
-                    if (totalCount > 0) {
-                        IconButton(
-                            onClick = { showClearDialog = true },
-                            modifier = Modifier.testTag("clear_history_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.DeleteSweep,
-                                contentDescription = "Clear All",
-                                tint = TerminalRed
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(text = "Delivered", fontSize = 10.sp, color = TextSecondaryDark)
+                            Text(
+                                text = "$successCount",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TerminalGreen
                             )
+                        }
+
+                        if (totalCount > 0) {
+                            IconButton(
+                                onClick = { showClearConfirm = true },
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .testTag("clear_history_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DeleteSweep,
+                                    contentDescription = "Clear History",
+                                    tint = TerminalRed,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                     }
                 }
             }
         }
 
-        // Filter Chips Row
+        // FILTER CHIPS ROW
         item {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(vertical = 4.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                item {
-                    HistoryFilterChip(
-                        label = "All Logs",
-                        isSelected = selectedFilter == null,
-                        onClick = { viewModel.setHistoryFilter(null) }
-                    )
-                }
-                item {
-                    HistoryFilterChip(
-                        label = "✔ Sent / Delivered",
-                        isSelected = selectedFilter == SmsDeliveryStatus.SENT,
-                        onClick = { viewModel.setHistoryFilter(SmsDeliveryStatus.SENT) }
-                    )
-                }
-                item {
-                    HistoryFilterChip(
-                        label = "🧪 Simulated",
-                        isSelected = selectedFilter == SmsDeliveryStatus.SIMULATED,
-                        onClick = { viewModel.setHistoryFilter(SmsDeliveryStatus.SIMULATED) }
-                    )
-                }
-                item {
-                    HistoryFilterChip(
-                        label = "❌ Failed",
-                        isSelected = selectedFilter == SmsDeliveryStatus.FAILED,
-                        onClick = { viewModel.setHistoryFilter(SmsDeliveryStatus.FAILED) }
-                    )
+                Icon(
+                    imageVector = Icons.Default.FilterList,
+                    contentDescription = null,
+                    tint = ElectricCyan,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Filter Logs:",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimaryDark
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    item {
+                        FilterChip(
+                            label = "All ($totalCount)",
+                            isSelected = selectedFilter == null,
+                            onClick = { viewModel.setHistoryFilter(null) }
+                        )
+                    }
+                    items(SmsDeliveryStatus.entries) { status ->
+                        FilterChip(
+                            label = status.name,
+                            isSelected = selectedFilter == status,
+                            onClick = { viewModel.setHistoryFilter(status) }
+                        )
+                    }
                 }
             }
         }
 
+        // LOG ITEMS LIST
         if (logs.isEmpty()) {
             item {
-                Box(
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(260.dp),
-                    contentAlignment = Alignment.Center
+                        .padding(top = 40.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = DarkSurface)
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         Icon(
                             imageVector = Icons.Default.HourglassTop,
                             contentDescription = null,
                             tint = TextSecondaryDark,
-                            modifier = Modifier.size(48.dp)
+                            modifier = Modifier.size(40.dp)
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "No dispatch records found",
+                            text = "No SMS Dispatch Records Found",
+                            fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = TextSecondaryDark
+                            color = TextPrimaryDark
                         )
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Run a blast from the main console to record telemetry logs.",
-                            fontSize = 12.sp,
-                            color = TextSecondaryDark.copy(alpha = 0.7f)
+                            text = "Launch an SMS batch from the Blaster tab to see telemetry logs.",
+                            fontSize = 11.sp,
+                            color = TextSecondaryDark
                         )
                     }
                 }
@@ -210,21 +247,21 @@ fun HistoryScreen(
             items(logs, key = { it.id }) { log ->
                 HistoryLogCard(
                     log = log,
-                    onInspect = { inspectLog = log },
+                    onViewDetails = { selectedLogForDetail = log },
+                    onDelete = { viewModel.deleteLog(log.id) },
                     onResend = {
                         viewModel.resendLog(log)
                         onResendToBlaster()
-                    },
-                    onDelete = { viewModel.deleteLog(log.id) }
+                    }
                 )
             }
         }
     }
 
-    // Inspect Details Dialog
-    inspectLog?.let { log ->
+    // LOG DETAIL DIALOG
+    selectedLogForDetail?.let { log ->
         AlertDialog(
-            onDismissRequest = { inspectLog = null },
+            onDismissRequest = { selectedLogForDetail = null },
             title = {
                 Text(
                     text = "Packet #${log.indexInBatch}/${log.totalBatch} Details",
@@ -240,7 +277,8 @@ fun HistoryScreen(
                     DetailRow("Recipient", log.phoneNumber)
                     DetailRow("Batch ID", log.batchId)
                     DetailRow("Status", log.status.name)
-                    DetailRow("Mode", if (log.isSimulation) "Sandbox Simulated" else "Real SIM Slot ${log.simSlot + 1}")
+                    DetailRow("Sender ID", log.senderId)
+                    DetailRow("Mode", if (log.isNumberMasked) "Masked Gateway (${log.gatewayProvider})" else "Hardware SIM Slot ${log.simSlot + 1}")
                     DetailRow("Latency", "${log.latencyMs} ms")
                     DetailRow(
                         "Timestamp",
@@ -259,18 +297,18 @@ fun HistoryScreen(
                         color = ElectricCyan
                     )
                     Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = DarkBg,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(8.dp)),
-                        shape = RoundedCornerShape(8.dp),
-                        color = DarkBg
+                            .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(8.dp))
                     ) {
                         Text(
                             text = log.messageText,
                             fontSize = 12.sp,
                             fontFamily = FontFamily.Monospace,
                             color = TextPrimaryDark,
-                            modifier = Modifier.padding(8.dp)
+                            modifier = Modifier.padding(10.dp)
                         )
                     }
                 }
@@ -279,16 +317,18 @@ fun HistoryScreen(
                 Button(
                     onClick = {
                         viewModel.resendLog(log)
-                        inspectLog = null
+                        selectedLogForDetail = null
                         onResendToBlaster()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = CyberCyan)
                 ) {
-                    Text("Resend in Blaster", color = Color.White)
+                    Icon(Icons.Default.Replay, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Load into Blaster", color = Color.White)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { inspectLog = null }) {
+                TextButton(onClick = { selectedLogForDetail = null }) {
                     Text("Close", color = TextSecondaryDark)
                 }
             },
@@ -296,14 +336,16 @@ fun HistoryScreen(
         )
     }
 
-    // Clear confirmation dialog
-    if (showClearDialog) {
+    // CLEAR HISTORY CONFIRMATION
+    if (showClearConfirm) {
         AlertDialog(
-            onDismissRequest = { showClearDialog = false },
-            title = { Text("Clear All Audit Logs?", fontWeight = FontWeight.Bold, color = TextPrimaryDark) },
+            onDismissRequest = { showClearConfirm = false },
+            title = {
+                Text("Clear All Telemetry Logs?", fontWeight = FontWeight.Bold, color = TextPrimaryDark)
+            },
             text = {
                 Text(
-                    "This action will wipe all sent SMS logs and batch telemetry records permanently.",
+                    "This will delete all saved SMS dispatch records from the local database.",
                     fontSize = 13.sp,
                     color = TextSecondaryDark
                 )
@@ -312,15 +354,15 @@ fun HistoryScreen(
                 Button(
                     onClick = {
                         viewModel.clearAllLogs()
-                        showClearDialog = false
+                        showClearConfirm = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = TerminalRed)
                 ) {
-                    Text("Wipe All Logs", color = Color.White)
+                    Text("Delete All Logs", color = Color.White)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showClearDialog = false }) {
+                TextButton(onClick = { showClearConfirm = false }) {
                     Text("Cancel", color = TextSecondaryDark)
                 }
             },
@@ -332,144 +374,152 @@ fun HistoryScreen(
 @Composable
 private fun HistoryLogCard(
     log: SmsLog,
-    onInspect: () -> Unit,
-    onResend: () -> Unit,
-    onDelete: () -> Unit
+    onViewDetails: () -> Unit,
+    onDelete: () -> Unit,
+    onResend: () -> Unit
 ) {
+    val statusColor = when (log.status) {
+        SmsDeliveryStatus.DELIVERED, SmsDeliveryStatus.SENT -> TerminalGreen
+        SmsDeliveryStatus.PENDING -> WarningYellow
+        SmsDeliveryStatus.FAILED -> TerminalRed
+        SmsDeliveryStatus.SIMULATED -> ElectricCyan
+    }
+
+    val timeFormatted = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(log.timestamp))
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onInspect() }
+            .clickable { onViewDetails() }
             .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(14.dp)),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = DarkSurface)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(12.dp)
         ) {
-            // Status Icon
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(
-                        when (log.status) {
-                            SmsDeliveryStatus.SENT, SmsDeliveryStatus.DELIVERED -> TerminalGreen.copy(alpha = 0.15f)
-                            SmsDeliveryStatus.SIMULATED -> ElectricCyan.copy(alpha = 0.15f)
-                            SmsDeliveryStatus.FAILED -> TerminalRed.copy(alpha = 0.15f)
-                            else -> DarkSurfaceElevated
-                        }
-                    ),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = when (log.status) {
-                        SmsDeliveryStatus.SENT, SmsDeliveryStatus.DELIVERED -> Icons.Default.CheckCircle
-                        SmsDeliveryStatus.SIMULATED -> Icons.Default.Science
-                        SmsDeliveryStatus.FAILED -> Icons.Default.Error
-                        else -> Icons.Default.HourglassTop
-                    },
-                    contentDescription = null,
-                    tint = when (log.status) {
-                        SmsDeliveryStatus.SENT, SmsDeliveryStatus.DELIVERED -> TerminalGreen
-                        SmsDeliveryStatus.SIMULATED -> ElectricCyan
-                        SmsDeliveryStatus.FAILED -> TerminalRed
-                        else -> TextSecondaryDark
-                    },
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(statusColor)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = log.phoneNumber,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Black,
                         fontSize = 13.sp,
                         color = TextPrimaryDark
                     )
-                    Text(
-                        text = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(log.timestamp)),
-                        fontSize = 11.sp,
-                        color = TextSecondaryDark
-                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = if (log.isNumberMasked) TerminalGreen.copy(alpha = 0.15f) else NeonOrange.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            text = if (log.isNumberMasked) "🛡️ ${log.senderId}" else "SIM",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (log.isNumberMasked) TerminalGreen else NeonOrange,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                        )
+                    }
                 }
 
-                Text(
-                    text = log.messageText,
-                    fontSize = 11.sp,
-                    color = TextSecondaryDark,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(2.dp))
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "[${log.batchId} #${log.indexInBatch}/${log.totalBatch}]",
-                        fontSize = 10.sp,
-                        fontFamily = FontFamily.Monospace,
-                        color = ElectricCyan
-                    )
-                    Text(
-                        text = "${log.latencyMs}ms",
+                        text = timeFormatted,
                         fontSize = 10.sp,
                         color = TextSecondaryDark
                     )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = TextSecondaryDark,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                 }
             }
 
-            IconButton(
-                onClick = onResend,
-                modifier = Modifier.size(32.dp)
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = log.messageText,
+                fontSize = 12.sp,
+                color = TextSecondaryDark,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.Replay,
-                    contentDescription = "Resend",
-                    tint = ElectricCyan,
-                    modifier = Modifier.size(18.dp)
+                Text(
+                    text = "Pkt #${log.indexInBatch}/${log.totalBatch} • ${log.status.name} • ${log.latencyMs}ms",
+                    fontSize = 10.sp,
+                    color = statusColor,
+                    fontWeight = FontWeight.SemiBold
                 )
+
+                TextButton(
+                    onClick = onResend,
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Replay,
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = ElectricCyan
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text("Resend", fontSize = 11.sp, color = ElectricCyan)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun HistoryFilterChip(
+private fun FilterChip(
     label: String,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
     Surface(
         modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(8.dp))
             .clickable { onClick() }
             .border(
                 1.dp,
                 if (isSelected) ElectricCyan else DarkSurfaceBorder,
-                RoundedCornerShape(16.dp)
+                RoundedCornerShape(8.dp)
             ),
-        color = if (isSelected) CyberCyan.copy(alpha = 0.3f) else DarkSurfaceElevated
+        color = if (isSelected) ElectricCyan.copy(alpha = 0.2f) else DarkSurface
     ) {
         Text(
             text = label,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             fontSize = 11.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            color = if (isSelected) ElectricCyan else TextSecondaryDark
+            color = if (isSelected) ElectricCyan else TextSecondaryDark,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
         )
     }
 }
@@ -481,6 +531,11 @@ private fun DetailRow(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(text = label, fontSize = 11.sp, color = TextSecondaryDark)
-        Text(text = value, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = TextPrimaryDark)
+        Text(
+            text = value,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextPrimaryDark
+        )
     }
 }

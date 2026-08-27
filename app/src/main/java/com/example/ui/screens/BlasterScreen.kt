@@ -1,7 +1,5 @@
 package com.example.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -26,25 +24,24 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Contacts
-import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.SimCard
-import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Terminal
-import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Tag
 import androidx.compose.material3.AlertDialog
@@ -52,8 +49,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -64,8 +59,6 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -87,6 +80,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.model.DispatchMode
 import com.example.data.model.EngineState
 import com.example.ui.theme.BrightAmber
 import com.example.ui.theme.CyberCyan
@@ -97,13 +91,12 @@ import com.example.ui.theme.DarkSurfaceElevated
 import com.example.ui.theme.ElectricCyan
 import com.example.ui.theme.NeonOrange
 import com.example.ui.theme.TerminalGreen
-import com.example.ui.theme.TerminalGreenBg
 import com.example.ui.theme.TerminalRed
-import com.example.ui.theme.TerminalRedBg
 import com.example.ui.theme.TextPrimaryDark
 import com.example.ui.theme.TextSecondaryDark
 import com.example.ui.theme.WarningYellow
 import com.example.ui.viewmodel.SmsBlastViewModel
+import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -123,7 +116,8 @@ fun BlasterScreen(
     val contacts by viewModel.contacts.collectAsStateWithLifecycle()
 
     var showContactPicker by remember { mutableStateOf(false) }
-    var showSafetyDisclaimer by remember { mutableStateOf(false) }
+    var showSenderIdDialog by remember { mutableStateOf(false) }
+    var showMaskInfoDialog by remember { mutableStateOf(false) }
 
     val terminalListState = rememberLazyListState()
 
@@ -142,18 +136,20 @@ fun BlasterScreen(
         initialValue = 0.96f,
         targetValue = 1.04f,
         animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = FastOutSlowInEasing),
+            animation = tween(600, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "pulseScale"
     )
+
+    val currentSpeedMsgPerSec = (1.0f / config.delaySeconds.coerceAtLeast(0.05f))
 
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .background(DarkBg)
             .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
         contentPadding = PaddingValues(top = 12.dp, bottom = 32.dp)
     ) {
         // TOP TELEMETRY STATUS BANNER
@@ -163,7 +159,7 @@ fun BlasterScreen(
                     .fillMaxWidth()
                     .border(
                         1.dp,
-                        if (isRunning) ElectricCyan else DarkSurfaceBorder,
+                        if (isRunning) NeonOrange else DarkSurfaceBorder,
                         RoundedCornerShape(18.dp)
                     ),
                 shape = RoundedCornerShape(18.dp),
@@ -198,15 +194,15 @@ fun BlasterScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = when (engineState) {
-                                    EngineState.RUNNING -> "BLASTING DISPATCH..."
+                                    EngineState.RUNNING -> "TURBO BLAST ACTIVE ⚡"
                                     EngineState.PAUSED -> "DISPATCH PAUSED"
-                                    EngineState.COMPLETED -> "BATCH COMPLETED"
-                                    EngineState.STOPPED -> "DISPATCH TERMINATED"
+                                    EngineState.COMPLETED -> "BATCH COMPLETED 🏁"
+                                    EngineState.STOPPED -> "DISPATCH STOPPED"
                                     EngineState.ERROR -> "DISPATCH ERROR"
-                                    EngineState.IDLE -> "READY FOR LAUNCH"
+                                    EngineState.IDLE -> "TURBO ENGINE READY"
                                 },
                                 style = MaterialTheme.typography.labelLarge.copy(
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.Black,
                                     letterSpacing = 1.sp
                                 ),
                                 color = when (engineState) {
@@ -219,20 +215,29 @@ fun BlasterScreen(
                             )
                         }
 
-                        IconButton(
-                            onClick = { showSafetyDisclaimer = true },
-                            modifier = Modifier.size(28.dp)
+                        // Speed Indicator Badge
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = NeonOrange.copy(alpha = 0.2f),
+                            modifier = Modifier.border(1.dp, NeonOrange.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
                         ) {
-                            Icon(
-                                imageVector = Icons.Outlined.HelpOutline,
-                                contentDescription = "Disclaimer",
-                                tint = TextSecondaryDark,
-                                modifier = Modifier.size(18.dp)
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Bolt, contentDescription = null, tint = NeonOrange, modifier = Modifier.size(13.dp))
+                                Spacer(modifier = Modifier.width(2.dp))
+                                Text(
+                                    text = "${String.format(Locale.US, "%.0f", currentSpeedMsgPerSec)} msg/sec",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NeonOrange
+                                )
+                            }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     // Progress Bar
                     val progressRatio = if (totalProgress > 0) {
@@ -245,7 +250,11 @@ fun BlasterScreen(
                             .fillMaxWidth()
                             .height(8.dp)
                             .clip(RoundedCornerShape(4.dp)),
-                        color = if (config.isSimulationMode) ElectricCyan else NeonOrange,
+                        color = when (config.dispatchMode) {
+                            DispatchMode.CLOUD_ANONYMOUS -> TerminalGreen
+                            DispatchMode.REAL_SIM -> NeonOrange
+                            DispatchMode.SANDBOX -> ElectricCyan
+                        },
                         trackColor = DarkSurface
                     )
 
@@ -267,21 +276,29 @@ fun BlasterScreen(
                             color = TerminalGreen
                         )
                         MetricItem(
-                            label = "Failed",
-                            value = "$failedCount",
-                            color = if (failedCount > 0) TerminalRed else TextSecondaryDark
+                            label = "Sender Mask",
+                            value = if (config.dispatchMode == DispatchMode.CLOUD_ANONYMOUS) config.senderId else "SIM No.",
+                            color = if (config.dispatchMode == DispatchMode.CLOUD_ANONYMOUS) TerminalGreen else NeonOrange
                         )
                         MetricItem(
                             label = "Mode",
-                            value = if (config.isSimulationMode) "Sandbox" else "Real SIM",
-                            color = if (config.isSimulationMode) ElectricCyan else NeonOrange
+                            value = when (config.dispatchMode) {
+                                DispatchMode.CLOUD_ANONYMOUS -> "Masked Gateway"
+                                DispatchMode.REAL_SIM -> "Real SIM"
+                                DispatchMode.SANDBOX -> "Sandbox"
+                            },
+                            color = when (config.dispatchMode) {
+                                DispatchMode.CLOUD_ANONYMOUS -> TerminalGreen
+                                DispatchMode.REAL_SIM -> NeonOrange
+                                DispatchMode.SANDBOX -> ElectricCyan
+                            }
                         )
                     }
                 }
             }
         }
 
-        // TARGET PHONE NUMBER CARD
+        // DISPATCH CHANNEL SELECTOR (ANONYMOUS MASKED vs REAL SIM vs SANDBOX)
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -291,7 +308,286 @@ fun BlasterScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(14.dp)
+                ) {
+                    Text(
+                        text = "1. DISPATCH SOURCE & SENDER IDENTITY",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = ElectricCyan
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        DispatchModeButton(
+                            title = "🛡️ Masked Sender",
+                            subtitle = "Hide phone number",
+                            isSelected = config.dispatchMode == DispatchMode.CLOUD_ANONYMOUS,
+                            selectedColor = TerminalGreen,
+                            modifier = Modifier.weight(1f),
+                            onClick = { viewModel.setDispatchMode(DispatchMode.CLOUD_ANONYMOUS) }
+                        )
+
+                        DispatchModeButton(
+                            title = "📱 Real SIM",
+                            subtitle = "Shows your SIM #",
+                            isSelected = config.dispatchMode == DispatchMode.REAL_SIM,
+                            selectedColor = NeonOrange,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                if (!hasSmsPermission) {
+                                    onRequestSmsPermission()
+                                }
+                                viewModel.setDispatchMode(DispatchMode.REAL_SIM)
+                            }
+                        )
+
+                        DispatchModeButton(
+                            title = "🧪 Sandbox",
+                            subtitle = "Virtual testing",
+                            isSelected = config.dispatchMode == DispatchMode.SANDBOX,
+                            selectedColor = ElectricCyan,
+                            modifier = Modifier.weight(1f),
+                            onClick = { viewModel.setDispatchMode(DispatchMode.SANDBOX) }
+                        )
+                    }
+
+                    if (config.dispatchMode == DispatchMode.CLOUD_ANONYMOUS) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, TerminalGreen.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
+                            shape = RoundedCornerShape(12.dp),
+                            color = DarkBg
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.VisibilityOff,
+                                            contentDescription = null,
+                                            tint = TerminalGreen,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Receiver Sees Sender As:",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = TextPrimaryDark
+                                        )
+                                    }
+
+                                    TextButton(
+                                        onClick = { showSenderIdDialog = true },
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = TerminalGreen
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Change ID", fontSize = 11.sp, color = TerminalGreen)
+                                    }
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = TerminalGreen.copy(alpha = 0.15f),
+                                    modifier = Modifier.padding(top = 4.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = config.senderId,
+                                            fontWeight = FontWeight.Black,
+                                            fontSize = 15.sp,
+                                            fontFamily = FontFamily.Monospace,
+                                            color = TerminalGreen
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "• Provider: ${config.gatewayConfig.selectedProvider.displayName}",
+                                            fontSize = 10.sp,
+                                            color = TextSecondaryDark
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    listOf("TX-ALERTS", "VK-SECURE", "SMS-PRO", "OTP-AUTH", "FLASH-INFO").forEach { preset ->
+                                        Surface(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .clickable { viewModel.setSenderId(preset) }
+                                                .border(
+                                                    1.dp,
+                                                    if (config.senderId == preset) TerminalGreen else DarkSurfaceBorder,
+                                                    RoundedCornerShape(6.dp)
+                                                ),
+                                            color = if (config.senderId == preset) TerminalGreen.copy(alpha = 0.2f) else DarkSurfaceElevated
+                                        ) {
+                                            Text(
+                                                text = preset,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (config.senderId == preset) TerminalGreen else TextSecondaryDark,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // SPEED & TURBO FREQUENCY BOOST SECTION
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, NeonOrange.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = DarkSurface)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.FlashOn,
+                                contentDescription = null,
+                                tint = NeonOrange,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "2. TURBO SPEED PRESETS",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Black),
+                                color = NeonOrange
+                            )
+                        }
+                        Text(
+                            text = "${config.delaySeconds}s (${String.format(Locale.US, "%.0f", currentSpeedMsgPerSec)} msg/sec)",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = NeonOrange
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        SpeedPresetChip(
+                            title = "⚡ 0.05s",
+                            subtitle = "20/sec",
+                            isSelected = config.delaySeconds == 0.05f,
+                            accentColor = TerminalRed,
+                            modifier = Modifier.weight(1f),
+                            onClick = { viewModel.setSpeedPreset(0.05f) }
+                        )
+                        SpeedPresetChip(
+                            title = "🚀 0.10s",
+                            subtitle = "10/sec",
+                            isSelected = config.delaySeconds == 0.10f,
+                            accentColor = NeonOrange,
+                            modifier = Modifier.weight(1f),
+                            onClick = { viewModel.setSpeedPreset(0.10f) }
+                        )
+                        SpeedPresetChip(
+                            title = "⚡ 0.25s",
+                            subtitle = "4/sec",
+                            isSelected = config.delaySeconds == 0.25f,
+                            accentColor = BrightAmber,
+                            modifier = Modifier.weight(1f),
+                            onClick = { viewModel.setSpeedPreset(0.25f) }
+                        )
+                        SpeedPresetChip(
+                            title = "⏱ 0.50s",
+                            subtitle = "2/sec",
+                            isSelected = config.delaySeconds == 0.50f,
+                            accentColor = ElectricCyan,
+                            modifier = Modifier.weight(1f),
+                            onClick = { viewModel.setSpeedPreset(0.50f) }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Batch Packet Quantity:", fontSize = 13.sp, color = TextPrimaryDark)
+                        Text(
+                            text = "${config.count} Packets",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = ElectricCyan
+                        )
+                    }
+
+                    Slider(
+                        value = config.count.toFloat(),
+                        onValueChange = { viewModel.updateCount(it.toInt()) },
+                        valueRange = 1f..100f,
+                        steps = 98,
+                        colors = SliderDefaults.colors(
+                            thumbColor = ElectricCyan,
+                            activeTrackColor = ElectricCyan,
+                            inactiveTrackColor = DarkSurfaceBorder
+                        ),
+                        modifier = Modifier.testTag("count_slider")
+                    )
+                }
+            }
+        }
+
+        // TARGET RECIPIENT CARD
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = DarkSurface)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -299,7 +595,7 @@ fun BlasterScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "1. TARGET RECIPIENT",
+                            text = "3. TARGET RECIPIENT NUMBER",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                             color = ElectricCyan
                         )
@@ -318,13 +614,13 @@ fun BlasterScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     OutlinedTextField(
                         value = config.targetNumber,
                         onValueChange = { viewModel.updateTargetNumber(it) },
-                        label = { Text("Phone Number (with country code)") },
-                        placeholder = { Text("+12025550199 or 03001234567") },
+                        label = { Text("Destination Phone Number") },
+                        placeholder = { Text("+12025550199 or 9876543210") },
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("target_number_input"),
@@ -339,41 +635,6 @@ fun BlasterScreen(
                             unfocusedContainerColor = DarkBg
                         )
                     )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Quick number chips
-                    Text(
-                        text = "Quick Presets:",
-                        fontSize = 11.sp,
-                        color = TextSecondaryDark
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(contacts.take(4)) { contact ->
-                            Surface(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable { viewModel.updateTargetNumber(contact.phoneNumber) }
-                                    .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(8.dp)),
-                                color = DarkSurfaceElevated
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = contact.name,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = TextPrimaryDark
-                                    )
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -388,7 +649,7 @@ fun BlasterScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(14.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -396,7 +657,7 @@ fun BlasterScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "2. MESSAGE TEMPLATE",
+                            text = "4. MESSAGE PAYLOAD",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                             color = ElectricCyan
                         )
@@ -407,7 +668,7 @@ fun BlasterScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     OutlinedTextField(
                         value = config.messageTemplate,
@@ -415,7 +676,7 @@ fun BlasterScreen(
                         label = { Text("Message Body") },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(110.dp)
+                            .height(95.dp)
                             .testTag("message_body_input"),
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -428,15 +689,8 @@ fun BlasterScreen(
                         )
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Dynamic Tag Chips
-                    Text(
-                        text = "Insert Dynamic Placeholders:",
-                        fontSize = 11.sp,
-                        color = TextSecondaryDark
-                    )
                     Spacer(modifier = Modifier.height(6.dp))
+
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -445,211 +699,18 @@ fun BlasterScreen(
                         TagChip(label = "OTP {code}", onClick = { viewModel.insertTag("{code}") })
                         TagChip(label = "🕒 {time}", onClick = { viewModel.insertTag("{time}") })
                         TagChip(label = "🎲 {random}", onClick = { viewModel.insertTag("{random}") })
-                        TagChip(label = "Total {total}", onClick = { viewModel.insertTag("{total}") })
                     }
                 }
             }
         }
 
-        // ENGINE PARAMETERS (COUNT & DELAY)
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = "3. BLAST DISPATCH PARAMETERS",
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = ElectricCyan
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Count Stepper & Slider
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Bolt,
-                                contentDescription = null,
-                                tint = NeonOrange,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Packet Count:", fontSize = 13.sp, color = TextPrimaryDark)
-                        }
-                        Text(
-                            text = "${config.count} Messages",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = NeonOrange
-                        )
-                    }
-
-                    Slider(
-                        value = config.count.toFloat(),
-                        onValueChange = { viewModel.updateCount(it.toInt()) },
-                        valueRange = 1f..100f,
-                        steps = 98,
-                        colors = SliderDefaults.colors(
-                            thumbColor = NeonOrange,
-                            activeTrackColor = NeonOrange,
-                            inactiveTrackColor = DarkSurfaceBorder
-                        ),
-                        modifier = Modifier.testTag("count_slider")
-                    )
-
-                    // Quick Count presets
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf(3, 5, 10, 20, 50).forEach { preset ->
-                            OutlinedButton(
-                                onClick = { viewModel.updateCount(preset) },
-                                modifier = Modifier.weight(1f),
-                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp),
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = if (config.count == preset) NeonOrange.copy(alpha = 0.2f) else DarkBg
-                                ),
-                                border = ButtonDefaults.outlinedButtonBorder.copy(
-                                    brush = Brush.horizontalGradient(
-                                        listOf(
-                                            if (config.count == preset) NeonOrange else DarkSurfaceBorder,
-                                            if (config.count == preset) BrightAmber else DarkSurfaceBorder
-                                        )
-                                    )
-                                )
-                            ) {
-                                Text(
-                                    text = "$preset",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (config.count == preset) NeonOrange else TextSecondaryDark
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Delay Slider
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Speed,
-                                contentDescription = null,
-                                tint = ElectricCyan,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Interval Delay:", fontSize = 13.sp, color = TextPrimaryDark)
-                        }
-                        Text(
-                            text = "${config.delaySeconds} sec",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = ElectricCyan
-                        )
-                    }
-
-                    Slider(
-                        value = config.delaySeconds,
-                        onValueChange = { viewModel.updateDelay(it) },
-                        valueRange = 0.2f..5.0f,
-                        steps = 47,
-                        colors = SliderDefaults.colors(
-                            thumbColor = ElectricCyan,
-                            activeTrackColor = ElectricCyan,
-                            inactiveTrackColor = DarkSurfaceBorder
-                        ),
-                        modifier = Modifier.testTag("delay_slider")
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Simulation vs Real Hardware Switch
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = DarkBg)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    imageVector = if (config.isSimulationMode) Icons.Outlined.Science else Icons.Default.SimCard,
-                                    contentDescription = null,
-                                    tint = if (config.isSimulationMode) ElectricCyan else NeonOrange,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column {
-                                    Text(
-                                        text = if (config.isSimulationMode) "Sandbox Mode (Zero Cost)" else "Real Hardware SIM Blast",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp,
-                                        color = TextPrimaryDark
-                                    )
-                                    Text(
-                                        text = if (config.isSimulationMode) "Simulates telecom loop & delivery" else "Dispatches real SMS using device carrier",
-                                        fontSize = 10.sp,
-                                        color = TextSecondaryDark
-                                    )
-                                }
-                            }
-
-                            Switch(
-                                checked = !config.isSimulationMode,
-                                onCheckedChange = { isReal ->
-                                    if (isReal && !hasSmsPermission) {
-                                        onRequestSmsPermission()
-                                    }
-                                    viewModel.toggleSimulationMode(!isReal)
-                                },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = NeonOrange,
-                                    checkedTrackColor = NeonOrange.copy(alpha = 0.5f),
-                                    uncheckedThumbColor = ElectricCyan,
-                                    uncheckedTrackColor = DarkSurfaceElevated
-                                ),
-                                modifier = Modifier.testTag("simulation_mode_switch")
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // ACTION BUTTONS (START / PAUSE / STOP)
+        // LAUNCH & CONTROL BUTTONS
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (!isBusy) {
                     Button(
                         onClick = {
-                            if (!config.isSimulationMode && !hasSmsPermission) {
+                            if (config.dispatchMode == DispatchMode.REAL_SIM && !hasSmsPermission) {
                                 onRequestSmsPermission()
                             } else {
                                 viewModel.startBlast()
@@ -657,27 +718,38 @@ fun BlasterScreen(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(54.dp)
+                            .height(56.dp)
                             .testTag("start_blast_button"),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (config.isSimulationMode) CyberCyan else NeonOrange
+                            containerColor = when (config.dispatchMode) {
+                                DispatchMode.CLOUD_ANONYMOUS -> TerminalGreen
+                                DispatchMode.REAL_SIM -> NeonOrange
+                                DispatchMode.SANDBOX -> CyberCyan
+                            }
                         )
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = Icons.Default.Send,
+                                imageVector = when (config.dispatchMode) {
+                                    DispatchMode.CLOUD_ANONYMOUS -> Icons.Default.Bolt
+                                    DispatchMode.REAL_SIM -> Icons.Default.Send
+                                    DispatchMode.SANDBOX -> Icons.Outlined.Science
+                                },
                                 contentDescription = null,
-                                modifier = Modifier.size(20.dp),
+                                modifier = Modifier.size(22.dp),
                                 tint = Color.White
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (config.isSimulationMode) "LAUNCH SANDBOX TEST" else "START REAL SMS BLAST",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp,
-                                color = Color.White,
-                                letterSpacing = 0.5.sp
+                                text = when (config.dispatchMode) {
+                                    DispatchMode.CLOUD_ANONYMOUS -> "LAUNCH FAST MASKED BLAST ⚡"
+                                    DispatchMode.REAL_SIM -> "LAUNCH REAL SIM BLAST"
+                                    DispatchMode.SANDBOX -> "LAUNCH ULTRA SANDBOX TEST"
+                                },
+                                fontWeight = FontWeight.Black,
+                                fontSize = 14.sp,
+                                color = Color.White
                             )
                         }
                     }
@@ -780,7 +852,7 @@ fun BlasterScreen(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "LIVE DISPATCH TERMINAL",
+                                text = "LIVE TURBO DISPATCH TERMINAL",
                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                 color = ElectricCyan
                             )
@@ -800,7 +872,7 @@ fun BlasterScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "Terminal idle. Press Launch to start telemetry feed...",
+                                text = "Turbo terminal idle. Tap Launch to stream packets...",
                                 fontSize = 11.sp,
                                 color = TextSecondaryDark,
                                 fontFamily = FontFamily.Monospace
@@ -832,6 +904,115 @@ fun BlasterScreen(
                 }
             }
         }
+    }
+
+    // SENDER ID CUSTOMIZER DIALOG
+    if (showSenderIdDialog) {
+        var tempSenderId by remember { mutableStateOf(config.senderId) }
+        AlertDialog(
+            onDismissRequest = { showSenderIdDialog = false },
+            title = {
+                Text(
+                    text = "Configure Masked Sender ID",
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimaryDark
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Enter the name/brand header that receiver will see instead of your phone number (Max 11 alphanumeric chars):",
+                        fontSize = 12.sp,
+                        color = TextSecondaryDark
+                    )
+
+                    OutlinedTextField(
+                        value = tempSenderId,
+                        onValueChange = { tempSenderId = it.take(11).uppercase() },
+                        label = { Text("Sender Header ID") },
+                        placeholder = { Text("e.g. TX-ALERTS, VK-SECURE") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = TerminalGreen,
+                            unfocusedBorderColor = DarkSurfaceBorder,
+                            focusedTextColor = TextPrimaryDark,
+                            unfocusedTextColor = TextPrimaryDark
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (tempSenderId.isNotBlank()) {
+                            viewModel.setSenderId(tempSenderId)
+                        }
+                        showSenderIdDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = TerminalGreen)
+                ) {
+                    Text("Apply Sender Mask", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSenderIdDialog = false }) {
+                    Text("Cancel", color = TextSecondaryDark)
+                }
+            },
+            containerColor = DarkSurface
+        )
+    }
+
+    // MASKED PRIVACY INFO DIALOG
+    if (showMaskInfoDialog) {
+        AlertDialog(
+            onDismissRequest = { showMaskInfoDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Shield,
+                        contentDescription = null,
+                        tint = TerminalGreen
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Anonymous Sender Masking", fontWeight = FontWeight.Bold, color = TextPrimaryDark)
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "1. How it works: In 'Masked Sender' mode, your personal SIM phone number is replaced with an Alpha Sender Header (e.g. TX-ALERTS, SMS-PRO).",
+                        fontSize = 12.sp,
+                        color = TextSecondaryDark
+                    )
+                    Text(
+                        text = "2. Recipient View: On the recipient's phone, the SMS appears from the chosen Header name rather than any personal 10-digit number.",
+                        fontSize = 12.sp,
+                        color = TextSecondaryDark
+                    )
+                    Text(
+                        text = "3. Complete Privacy: Your mobile operator SIM identity and caller-ID remain protected.",
+                        fontSize = 12.sp,
+                        color = TextSecondaryDark
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showMaskInfoDialog = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = TerminalGreen)
+                ) {
+                    Text("Got It", color = Color.White)
+                }
+            },
+            containerColor = DarkSurface
+        )
     }
 
     // CONTACT PICKER DIALOG
@@ -917,54 +1098,92 @@ fun BlasterScreen(
             containerColor = DarkSurface
         )
     }
+}
 
-    // SAFETY & DISCLAIMER DIALOG
-    if (showSafetyDisclaimer) {
-        AlertDialog(
-            onDismissRequest = { showSafetyDisclaimer = false },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.ErrorOutline,
-                        contentDescription = null,
-                        tint = BrightAmber
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Telecom Compliance & Safety", fontWeight = FontWeight.Bold, color = TextPrimaryDark)
-                }
-            },
-            text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "1. Carrier Billing: Real SMS mode uses your active SIM plan and may incur standard carrier messaging charges.",
-                        fontSize = 12.sp,
-                        color = TextSecondaryDark
-                    )
-                    Text(
-                        text = "2. Android System Limits: Android OS imposes internal rate-limiting (approx. 30-100 SMS/min) to prevent network congestion. Adjust the Interval Delay to 1.0s or more.",
-                        fontSize = 12.sp,
-                        color = TextSecondaryDark
-                    )
-                    Text(
-                        text = "3. Fair Use Policy: This tool is designed for authorized batch notification testing, server alert simulation, OTP stress tests, and event broadcasts. Do not harass or spam unconsenting recipients.",
-                        fontSize = 12.sp,
-                        color = TextSecondaryDark
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = { showSafetyDisclaimer = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = CyberCyan)
-                ) {
-                    Text("Understood", color = Color.White)
-                }
-            },
-            containerColor = DarkSurface
-        )
+@Composable
+private fun SpeedPresetChip(
+    title: String,
+    subtitle: String,
+    isSelected: Boolean,
+    accentColor: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .clickable { onClick() }
+            .border(
+                1.5.dp,
+                if (isSelected) accentColor else DarkSurfaceBorder,
+                RoundedCornerShape(10.dp)
+            ),
+        shape = RoundedCornerShape(10.dp),
+        color = if (isSelected) accentColor.copy(alpha = 0.2f) else DarkBg
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = title,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                color = if (isSelected) accentColor else TextPrimaryDark
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (isSelected) accentColor else TextSecondaryDark
+            )
+        }
+    }
+}
+
+@Composable
+private fun DispatchModeButton(
+    title: String,
+    subtitle: String,
+    isSelected: Boolean,
+    selectedColor: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .clickable { onClick() }
+            .border(
+                1.5.dp,
+                if (isSelected) selectedColor else DarkSurfaceBorder,
+                RoundedCornerShape(10.dp)
+            ),
+        shape = RoundedCornerShape(10.dp),
+        color = if (isSelected) selectedColor.copy(alpha = 0.15f) else DarkBg
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = title,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isSelected) selectedColor else TextPrimaryDark,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                fontSize = 9.sp,
+                color = TextSecondaryDark,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 
