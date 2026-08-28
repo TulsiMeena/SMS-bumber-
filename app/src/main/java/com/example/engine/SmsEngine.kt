@@ -72,9 +72,13 @@ class SmsEngine(
     private var isPaused = false
 
     fun isSmsPermissionGranted(): Boolean {
+        return isPermissionGranted(Manifest.permission.SEND_SMS)
+    }
+
+    fun isPermissionGranted(permission: String): Boolean {
         return ContextCompat.checkSelfPermission(
             context,
-            Manifest.permission.SEND_SMS
+            permission
         ) == PackageManager.PERMISSION_GRANTED
     }
 
@@ -462,12 +466,45 @@ class SmsEngine(
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun getSmsManager(simSlot: Int): SmsManager {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            context.getSystemService(SmsManager::class.java)
-        } else {
-            @Suppress("DEPRECATION")
-            SmsManager.getDefault()
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val baseSmsManager = context.getSystemService(SmsManager::class.java)
+                val subManager = context.getSystemService(android.telephony.SubscriptionManager::class.java)
+                if (subManager != null && isPermissionGranted(Manifest.permission.READ_PHONE_STATE)) {
+                    val activeSubs = subManager.activeSubscriptionInfoList
+                    if (!activeSubs.isNullOrEmpty() && simSlot in activeSubs.indices) {
+                        val subId = activeSubs[simSlot].subscriptionId
+                        baseSmsManager.createForSubscriptionId(subId)
+                    } else {
+                        baseSmsManager
+                    }
+                } else {
+                    baseSmsManager
+                }
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
+                val subManager = android.telephony.SubscriptionManager.from(context)
+                if (isPermissionGranted(Manifest.permission.READ_PHONE_STATE)) {
+                    val activeSubs = subManager.activeSubscriptionInfoList
+                    if (!activeSubs.isNullOrEmpty() && simSlot in activeSubs.indices) {
+                        val subId = activeSubs[simSlot].subscriptionId
+                        SmsManager.getSmsManagerForSubscriptionId(subId)
+                    } else {
+                        SmsManager.getDefault()
+                    }
+                } else {
+                    SmsManager.getDefault()
+                }
+            } else {
+                SmsManager.getDefault()
+            }
+        } catch (e: Exception) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                context.getSystemService(SmsManager::class.java) ?: SmsManager.getDefault()
+            } else {
+                SmsManager.getDefault()
+            }
         }
     }
 
